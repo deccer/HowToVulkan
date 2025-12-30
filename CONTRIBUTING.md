@@ -1,6 +1,10 @@
 # Contributing
 
-Contributions are welcome. If you want to contribute a larger pull request, please open an issue first before starting to work on it. That ensures it fits with the direction of the project and doesn't clash with things I'm working on.
+Contributions are welcome.
+
+Note that this is meant to be a mostly complete tutorial and there are no plans to widen the scope of it to other Vulkan areas.
+
+If you want to contribute a larger pull request, please open an issue first before starting to work on it. That ensures it fits with the direction of the project and doesn't clash with things I'm working on.
 
 # License
 
