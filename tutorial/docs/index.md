@@ -1078,7 +1078,7 @@ Another area where Vulkan strongly differs from OpenGL is state management. Open
 
 	There is *some* state in Vulkan that can be dynamic. Mostly basic state like viewport and scissor setup. Them being dynamic is not an issue for drivers. There are several extensions that make additional state dynamic, but we're not going to use them here.
 
-Vulkan supports [dedicated pipeline types](https://docs.vulkan.org/refpages/latest/refpages/source/VkPipelineBindPoint.html) for graphics, compute, raytracing. Setting up one of these depends on that type. We only do graphics (aka [rasterization](https://en.wikipedia.org/wiki/Rasterisation)) so we'll be creating a graphics pipeline.
+Vulkan supports [pipeline types](https://docs.vulkan.org/refpages/latest/refpages/source/VkPipelineBindPoint.html) specific to use-cases like graphics, compute, raytracing. As such, setting up a pipeline depends what we want to achieve. In our case, that's graphics (aka [rasterization](https://en.wikipedia.org/wiki/Rasterisation)) so we'll be creating a graphics pipeline.
 
 First we create a pipeline layout. This defines the interface between the pipeline and our shaders. Pipeline layouts are separate objects as you can mix and match them for use with other pipelines:
 
@@ -1099,9 +1099,7 @@ chk(vkCreatePipelineLayout(device, &pipelineLayoutCI, nullptr, &pipelineLayout))
 
 The [`pushConstantRange`](https://docs.vulkan.org/refpages/latest/refpages/source/VkPushConstantRange.html) defines a range of values that we can directly push to the shader without having to go through a buffer. We use these to pass a pointer to the uniform buffer (more on that later). The descriptor set layouts (`pSetLayouts`) define the interface to the shader resources. In our case that's only one layout for passing the texture image descriptors. The call to [`vkCreatePipelineLayout`](https://docs.vulkan.org/refpages/latest/refpages/source/VkPipelineLayoutCreateInfo.html) will create the pipeline layout we can then use for our pipeline.
 
-Another part of our interface between the pipeline and the shader is the layout of the vertex data. In the [mesh loading chapter](#loading-meshes) we defined a basic vertex structure that we now need to specify in Vulkan terms. Setting this up in Vulkan is very flexible, but in our case it's pretty simple.
-
-We use a single vertex buffer, so we require one [vertex binding point](https://docs.vulkan.org/refpages/latest/refpages/source/VkVertexInputBindingDescription.html). The `stride` matches the size of our vertex structure as our vertices are stored directly adjacent in memory. The `inputRate` is per-vertex, meaning that the data pointer advances for every vertex read:
+Another part of our interface between the pipeline and the shader is the layout of the vertex data. In the [mesh loading chapter](#loading-meshes) we defined a basic vertex structure that we now need to specify in Vulkan terms. We use a single vertex buffer, so we require one [vertex binding point](https://docs.vulkan.org/refpages/latest/refpages/source/VkVertexInputBindingDescription.html). The `stride` matches the size of our vertex structure as our vertices are stored directly adjacent in memory. The `inputRate` is per-vertex, meaning that the data pointer advances for every vertex read:
 
 ```cpp
 VkVertexInputBindingDescription vertexBinding{
@@ -1158,7 +1156,7 @@ std::vector<VkPipelineShaderStageCreateInfo> shaderStages{
 
 !!! Tip
 
-	If you'd wanted to use additional shaders to render objects in different ways, you'd have to create multiple pipelines. The [VK_EXT_shader_objects](https://www.khronos.org/blog/you-can-use-vulkan-without-pipelines-today) makes those shader stages into separate objects and adds more flexibility to this part of the API.
+	If you'd wanted to use different shaders (or shader combinations), you'd have to create multiple pipelines. The [VK_EXT_shader_objects](https://www.khronos.org/blog/you-can-use-vulkan-without-pipelines-today) makes those shader stages into separate objects and adds more flexibility to this part of the API.
 
 Next we configure the [viewport state](https://docs.vulkan.org/refpages/latest/refpages/source/VkPipelineViewportStateCreateInfo.html). We use one viewport and one scissor, and we also want them to be dynamic state so we don't have to recreate the pipeline if any of those changes, e.g. when resizing the window. It's one of the few dynamic states that have been there since Vulkan 1.0:
 
@@ -1258,8 +1256,9 @@ while (window.isOpen()) {
 	// Wait on fence
 	// Acquire next image
 	// Update shader data
-	// Record command buffers
-	// Submit command buffers
+	// Record command buffer
+	// Submit command buffer
+	// Present image
 	// Poll events
 }
 ```
@@ -1279,18 +1278,18 @@ chk(vkWaitForFences(device, 1, &fences[frameIndex], true, UINT64_MAX));
 chk(vkResetFences(device, 1, &fences[frameIndex]));
 ```
 
-The call to [vkWaitForFences](https://docs.vulkan.org/refpages/latest/refpages/source/vkWaitForFences.html) will wait CPU side until the GPU has signalled it has finished all work submitted with that fence. The timeout value of `UINT64_MAX` might sound like much, but that's in nanoseconds, so actually quite a small period. As the fence is still in signaled state, we also need to [reset](https://docs.vulkan.org/refpages/latest/refpages/source/vkResetFences.html) for the next submission.
+The call to [vkWaitForFences](https://docs.vulkan.org/refpages/latest/refpages/source/vkWaitForFences.html) will wait on the CPU until the GPU has signalled it has finished all work submitted with that fence. The max. timeout for this wait is set to `UINT64_MAX`. That might sound like much, but that's in nanoseconds, so actually quite a small period. As the fence is still in signaled state, we also need to [reset](https://docs.vulkan.org/refpages/latest/refpages/source/vkResetFences.html) for the next submission.
 
 
 ### Acquire next image
 
-Unlike (command) buffers, we don't have direct control over the [swapchain images](#swapchain). Instead we need to "ask" the swapchain for the next index to be used in this frame:
+As we don't have direct control over the [swapchain images](#swapchain), we need to "ask" (acquire) the swapchain for the next index to be used in this frame:
 
 ```cpp
 vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, presentSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex);
 ```
 
-It's important to use the `image index` returned by [vkAcquireNextImageKHR](https://docs.vulkan.org/refpages/latest/refpages/source/vkAcquireNextImageKHR.html) to access the swapchain images. There is no guarantee that images are acquired in consecutive order. That's one of the reasons we have two indices.
+It's important to use the image index returned by [vkAcquireNextImageKHR](https://docs.vulkan.org/refpages/latest/refpages/source/vkAcquireNextImageKHR.html) to access the swapchain images. That's because there is no guarantee that images are acquired in consecutive order. That's one of the reasons we have two indices.
 
 We also pass a [semaphore](#synchronization-objects) to this function which will be used later on at command buffer submission.
 
@@ -1315,19 +1314,19 @@ memcpy(uniformBuffers[frameIndex].mapped, &mvp, sizeof(UniformData));
 
 This works because the [uniform buffers](#uniform-buffers) are stored in a memory type accessible by both the CPU (for writing) and the GPU (for reading). With the preceding fence synchronization we also made sure that the CPU won't start writing to that uniform buffer before the GPU has finished reading from it.
 
-### Record command buffers
+### Record command buffer
 
-Now we can finally start recording actual GPU work to get something displayed to the screen. A lot of the things we need for that have been discussed earlier, so even though this will be a lot of code, it should be easy to follow. As mentioned in [command buffers](#command-buffers), commands are not directly issued to the GPU in Vulkan but rather recorded to command buffers. That's exactly what we are going to do: record the commands for a single render frame.
+Now we can finally start recording actual GPU work items. A lot of the things we need for that have been discussed earlier, so even though this will be a lot of code, it should be easy to follow. As mentioned in [command buffers](#command-buffers), commands are not directly issued to the GPU in Vulkan but rather recorded to command buffers. That's exactly what we are going to do: record the commands for a single render frame.
 
-You might be tempted to pre-record command buffers and reuse them until something changes that would require re-recording. This makes things unnecessarily complicated though, as recording command buffers is pretty fast and can be done in parallel on the CPU.
+You might be tempted to pre-record command buffers and reuse them until something changes that would require re-recording. This makes things unnecessarily complicated however, as you'd have to implement update logic that works with CPU/GPU parallelism. And since recording command buffers is relatively fast and can be offloaded to other CPU threads if needed, recording them every frame is perfectly fine.
 
 !!! Tip
 
 	Commands that are recorded into a command buffer start with `vkCmd`. They are not directly executed, but only when the command buffer is submitted to a queue (GPU timeline). A common mistake for beginners is to mix those commands with commands that are instantly executed on the CPU timeline. It's important to remember that these two different timelines exist.
 
-Command buffers have a [lifecycle](https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#commandbuffers-lifecycle) that we have to adhere to. For example we can't record commands to it wile it's in the executable. This is also checked by [validation layers](#validation-layers) that would let us know if we misused things.
+Command buffers have a [lifecycle](https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#commandbuffers-lifecycle) that we have to adhere to. For example we can't record commands to it while it's in the executable state. This is also checked by [validation layers](#validation-layers) that would let us know if we misused things.
 
-First we need to move the command buffer into the initial state. That's done by resetting the [command buffer](https://docs.vulkan.org/refpages/latest/refpages/source/vkResetCommandBuffer.html) and is safe to do as we have waited on the fence earlier on to make sure it's no longer in the pending state:
+First we need to move the command buffer into the initial state. That's done by [resetting it](https://docs.vulkan.org/refpages/latest/refpages/source/vkResetCommandBuffer.html) and is safe to do now as we have waited on the fence earlier on to make sure it's no longer in the pending state:
 
 ```cpp
 auto cb = commandBuffers[frameIndex];
@@ -1395,7 +1394,7 @@ The *first barrier* transitions the current swapchain image *to* a [layout](http
 
 A call to [vkCmdPipelineBarrier2](https://docs.vulkan.org/refpages/latest/refpages/source/vkCmdPipelineBarrier2.html) will then insert those two barriers into the current command buffer.
 
-With the attachments in the correct layout, it's time to define how we use these attachments. As noted early on, we'll use [Dynamic rendering](https://www.khronos.org/blog/streamlining-render-passes) for that instead of the complicated and cumbersome render pass objects from Vulkan 1.0.
+With the attachments in the correct layout, it's time to define how we are going to use them. As noted early on, we'll use [Dynamic rendering](https://www.khronos.org/blog/streamlining-render-passes) for that, instead of the complicated and cumbersome render pass objects from Vulkan 1.0.
 
 ```cpp
 VkRenderingAttachmentInfo colorAttachmentInfo{
@@ -1432,7 +1431,7 @@ VkRenderingInfo renderingInfo{
 vkCmdBeginRendering(cb, &renderingInfo);
 ```
 
-Inside this render pass instance we can finally start recording GPU commands. Remember that these aren't directly issued to the GPU, this will be done later on.
+Inside this render pass instance we can finally start recording GPU commands. Remember that these aren't issued to the GPU just yet, but are only recorded into the current command buffer.
 
 We start by setting up the [viewport](https://docs.vulkan.org/spec/latest/chapters/vertexpostproc.html#vertexpostproc-viewport) to define our rendering area. We always want this to be the whole window. Same for the [scissor](https://docs.vulkan.org/spec/latest/chapters/fragops.html#fragops-scissor) area. Both are part of the dynamic state we enabled at [pipeline creation](#graphics-pipeline), so we can adjust them inside the command buffer instead of having the recreate the graphics pipeline on each window resize:
 
@@ -1443,7 +1442,7 @@ VkRect2D scissor{ .extent{ .width = window.getSize().x, .height = window.getSize
 vkCmdSetScissor(cb, 0, 1, &scissor);
 ```
 
-Next up is binding the resources involved in rendering our 3D object. The [graphics pipeline](#graphics-pipeline), that also includes our vertex and fragment shaders, as well as the descriptor set for the array of our [texture images](#loading-textures) and the vertex and index buffers of our [3D mesh](#loading-meshes):
+Next up is binding the resources involved in rendering our 3D objects. The [graphics pipeline](#graphics-pipeline), that also includes our vertex and fragment shaders, as well as the descriptor set for the array of our [texture images](#loading-textures) and the vertex and index buffers of our [3D mesh](#loading-meshes):
 
 ```cpp
 vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
@@ -1461,7 +1460,7 @@ vkCmdPushConstants(cb, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(VkD
 
 !!! Note
 
-	These `vkCmd*` calls (and many others) set the current command buffer state. That means the persist across multiple draw calls inside the same command buffers. So if you e.g. wanted to issue a second draw call with the same pipeline but a different descriptor sets you'd only have to call `vkCmdBindDescriptorSets` with another set, while keeping the rest of the state.
+	These `vkCmd*` calls (and many others) set the current command buffer state. That means they persist across multiple draw calls inside this command buffer. So if you e.g. wanted to issue a second draw call with the same pipeline but a different descriptor sets you'd only have to call `vkCmdBindDescriptorSets` with another set, while keeping the rest of the state.
 
 And with that we are *finally* ready to issue an actual draw command. With all the work we did up to this point, that's just a single command:
 
@@ -1509,7 +1508,7 @@ vkEndCommandBuffer(cb);
 
 This moves it to the [executable state](https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#commandbuffers-lifecycle). That's a requirement for the next step.
 
-### Submit command buffers
+### Submit command buffer
 
 In order to execute the commands we just recorded we need to submit the command buffer to a matching queue. In a real-world application it's not uncommon to have multiple queues of different types and also more complex submission patterns. But we only use graphics commands (no compute or ray tracing) and as such also only have a single graphics queue to which we submit our current frame's command buffer:
 
@@ -1544,7 +1543,7 @@ Once work has been submitted, we can calculate the frame index for the next rend
 frameIndex = (frameIndex + 1) % maxFramesInFlight;
 ```
 
-### Present images
+### Present image
 
 The final step to get our rendering results to the screen is presenting the current swapchain image we used as the color attachment:
 
@@ -1564,7 +1563,7 @@ Calling [vkQueuePresentKHR](https://docs.vulkan.org/refpages/latest/refpages/sou
 
 ### Poll events
 
-After all the visual things we now work through the event queue (of the operating system). This is done in an additional loop (inside the render loop) where we call `pollEvent` until all events have been popped from the queue. We only handle event types we're interested in:
+Last but not least, we work through the event queue of the operating system. This is done in an additional loop (inside the render loop) where we call SFML's `pollEvent` until all events have been popped from the queue. We only handle event types we're interested in:
 
 ```cpp
 while (const std::optional event = window.pollEvent()) {
