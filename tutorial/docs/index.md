@@ -308,7 +308,7 @@ And then request a Vulkan surface for that window:
 chk(window.createVulkanSurface(instance, surface));
 ```
 
-For the following chapter(s) we'll need to know the properties surface we just created, so we get them via [`vkGetPhysicalDeviceSurfaceCapabilitiesKHR`](https://docs.vulkan.org/refpages/latest/refpages/source/vkGetPhysicalDeviceSurfaceCapabilitiesKHR.html) and store them for future reference:
+For the following chapter(s) we'll need to know the properties of the surface we just created, we get them via [`vkGetPhysicalDeviceSurfaceCapabilitiesKHR`](https://docs.vulkan.org/refpages/latest/refpages/source/vkGetPhysicalDeviceSurfaceCapabilitiesKHR.html) and store them for future reference:
 
 ```cpp
 VkSurfaceCapabilitiesKHR surfaceCaps{};
