@@ -1324,7 +1324,7 @@ Now we can finally start recording actual GPU work items. A lot of the things we
 
 You might be tempted to pre-record command buffers and reuse them until something changes that would require re-recording. This makes things unnecessarily complicated however, as you'd have to implement update logic that works with CPU/GPU parallelism. And since recording command buffers is relatively fast and can be offloaded to other CPU threads if needed, recording them every frame is perfectly fine.
 
-!!! Tip
+!!! Note
 
 	Commands that are recorded into a command buffer start with `vkCmd`. They are not directly executed, but only when the command buffer is submitted to a queue (GPU timeline). A common mistake for beginners is to mix those commands with commands that are instantly executed on the CPU timeline. It's important to remember that these two different timelines exist.
 
