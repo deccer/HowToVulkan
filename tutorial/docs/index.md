@@ -65,6 +65,20 @@ Vulkan consumes shaders in an intermediate format called [SPIR-V](https://www.kh
 
 While it's not required for developing Vulkan applications, the [LunarG Vulkan SDK](https://vulkan.lunarg.com/sdk/home) provides a convenient way to install commonly used libraries and tools, some of which are used in this tutorial. It's therefore recommended to install this.
 
+## Validation layers
+
+Vulkan was designed to minimize driver overhead. While that *can* result in better performance, it also removes many of the safeguards that APIs like OpenGL had and puts that responsibility into your hands. If you misuse Vulkan the driver is free to crash. So even if your app works on one GPU, it doesn't guarantee that it works on others. On the other hand, the Vulkan specification defines valid usages for all functionality. And with the [validation layers](https://github.com/KhronosGroup/Vulkan-ValidationLayers), an easy-to-use tool to check for that exists. 
+
+Validation layers can be enabled in code, but the easier option is to enable the layers via the [Vulkan Configurator GUI](https://vulkan.lunarg.com/doc/view/latest/windows/vkconfig.html) provided by the [Vulkan SDK](#vulkan-sdk). Once they're enabled, any improper use of the API will be logged to the command line window of our application.
+
+!!! Note
+
+	You should always have the validation layers enabled when developing with Vulkan. This makes sure you write spec-compliant code that properly works on other systems.
+
+## Graphics debugger
+
+Another indispensable tool is a graphics debugger. Similar to the CPU debugger available in IDEs like Visual Studio, these help you debug runtime issues on the GPU side of things. A commonly used cross-platform and cross-vendor graphics debugger with Vulkan support is [RenderDoc](https://renderdoc.org/). While using such a debugger isn’t required for this tutorial, it’s invaluable if you want to build upon what you’ve learned and encounter issues while doing so.
+
 ## Development environment
 
 Our build system will be [CMake](https://cmake.org/). Similar to my approach to writing code, things will be kept as simple as possible with the added benefit of being able to follow this tutorial with a wide variety of C++ compilers and IDEs.
@@ -76,16 +90,6 @@ cmake -B build -G "Visual Studio 17 2022"
 ```
 
 This will write a Visual Studio 2022 solution file to the `build` folder. As an alternative to the command line, you can use [cmake-gui](https://cmake.org/cmake/help/latest/manual/cmake-gui.1.html). The generator (-G) depends on your IDE, you can find a list of those [here](https://cmake.org/cmake/help/latest/manual/cmake-generators.7.html).
-
-## Validation layers
-
-Vulkan was designed to minimize driver overhead. While that *can* result in better performance, it also removes many of the safeguards that APIs like OpenGL had and puts that responsibility into your hands. If you misuse Vulkan the driver is free to crash. So even if your app works on one GPU, it doesn't guarantee that it works on others. On the other hand, the Vulkan specification defines valid usages for all functionality. And with the [validation layers](https://github.com/KhronosGroup/Vulkan-ValidationLayers), an easy-to-use tool to check for that exists. 
-
-Validation layers can be enabled in code, but the easier option is to enable the layers via the [Vulkan Configurator GUI](https://vulkan.lunarg.com/doc/view/latest/windows/vkconfig.html) provided by the [Vulkan SDK](#vulkan-sdk). Once they're enabled, any improper use of the API will be logged to the command line window of our application.
-
-!!! Note
-
-	You should always have the validation layers enabled when developing with Vulkan. This makes sure you write spec-compliant code that properly works on other systems.
 
 ## Source
 
